@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SJH - Invoice </title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      background-color: #f0f2f5;
+      color: #333;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 20px auto;
+      background: #fff;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    }
+    header {
+      background: #8B0000; /* Maroon color like the logo */
+      color: #fff;
+      padding: 1rem;
+      text-align: center;
+      border-radius: 12px 12px 0 0;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 2rem;
+    }
+    h2, h3 {
+      text-align: center;
+      color: #8B0000;
+      border-bottom: 2px solid #f0f2f5;
+      padding-bottom: 10px;
+      margin-top: 0;
+    }
+    .form-section {
+      margin-bottom: 30px;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background-color: #fafafa;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 15px;
+      align-items: center;
+    }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 5px;
+    }
+    input, select {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      width: 100%;
+      box-sizing: border-box;
+      transition: border-color 0.3s ease;
+    }
+    input:focus, select:focus {
+      border-color: #8B0000;
+      outline: none;
+    }
+    button {
+      padding: 12px 20px;
+      background: #8B0000;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: #6a0000;
+    }
+    button.remove-btn {
+      background-color: #dc3545;
+    }
+    .item-entry {
+      border-bottom: 2px dashed #eee;
+      padding-bottom: 20px;
+      margin-bottom: 20px;
+    }
+    .item-entry:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    /* --- Invoice Preview Styles --- */
+    #invoicePreview {
+      display: none;
+      margin-top: 40px;
+      padding: 25px;
+      border: 1px solid #555;
+      font-family: 'Times New Roman', Times, serif;
+    }
+    .invoice-header {
+      text-align: center;
+      border-bottom: 2px solid #000;
+      padding-bottom: 10px;
+    }
+    .invoice-header h2 {
+      margin: 5px 0;
+      font-size: 2rem;
+      color: #000;
+      border: none;
+    }
+    .invoice-header p {
+      margin: 2px 0;
+      font-size: 0.9rem;
+    }
+    .invoice-details-grid, .customer-details-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      width: 100%;
+      margin: 15px 0;
+      font-size: 0.9rem;
+    }
+    .invoice-details-grid div, .customer-details-grid div {
+      padding: 3px;
+    }
+    .invoice-items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      font-size: 0.9rem;
+    }
+    .invoice-items-table th, .invoice-items-table td {
+      border: 1px solid #000;
+      padding: 6px;
+      text-align: center;
+    }
+    .invoice-items-table th {
+      background-color: #f2f2f2;
+    }
+    .invoice-footer {
+      margin-top: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      font-size: 0.9rem;
+    }
+    .footer-left {
+      width: 65%;
+    }
+    .footer-right {
+      width: 35%;
+      border: 1px solid #000;
+    }
+    .footer-right table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .footer-right td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #000;
+    }
+    .footer-right tr:last-child td {
+      border-bottom: none;
+    }
+    .footer-right .net-amount {
+      font-weight: bold;
+      background-color: #f2f2f2;
+    }
+    .signatures {
+      margin-top: 400px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
+    }
+    .download-buttons {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+    @media print {
+      body * { visibility: hidden; }
+      #invoicePreview, #invoicePreview * { visibility: visible; }
+      #invoicePreview {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        border: none;
+      }
+      .download-buttons { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Sattam Jewellery House Invoice Generator</h1>
+</header>
+
+<div class="container">
+  <form id="invoiceForm">
+    <div class="form-section">
+      <h3>Invoice & Customer Details</h3>
+      <div class="form-grid">
+        <div><label>Memo No.</label><input type="text" id="memoNo" value="SJH/000/00" required></div>
+        <div><label>Date</label><input type="date" id="invoiceDate" required></div>
+        <div><label>Customer Name</label><input type="text" id="customerName" placeholder="Customar Name" required></div>
+        <div><label>Phone Number</label><input type="text" id="customerPhone" placeholder="10-digit number" required></div>
+        <div style="grid-column: span 2;"><label>Address</label><input type="text" id="customerAddress" placeholder="e.g., Canning, West Bengal" required></div>
+        <div><label>State</label><input type="text" id="customerState" value="West Bengal"></div>
+        <div><label>State Code</label><input type="text" id="customerStateCode" value="19"></div>
+        <div><label>Place of Delivery</label><input type="text" id="placeOfDelivery" value="Canning"></div>
+        <div><label>Sales Person</label><input type="text" id="salesPerson" value="N.RAHA"></div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h3>Items</h3>
+      <div id="itemsContainer">
+        <div class="item-entry form-grid">
+          <div><label>Description</label><input type="text" class="itemName" required placeholder="e.g., Pola Ring"></div>
+          <div><label>HSN</label><input type="text" class="hsn" value="SJH 916/22K"></div>
+          <div><label>Purity</label><input type="text" class="purity" value="22"></div>
+          <div><label>Pcs</label><input type="number" class="pcs" value="1"></div>
+          <div><label>Gross Wt (gm)</label><input type="number" class="grossWeight" step="0.001" placeholder="0.000"></div>
+          <div><label>Net Wt (gm)</label><input type="number" class="netWeight" step="0.001" required placeholder="0.000"></div>
+          <div><label>Rate (/gm)</label><input type="number" class="rate" step="0.01" required placeholder="0.00"></div>
+          <div><label>Making Charge</label><input type="number" class="making" step="0.01" placeholder="0.00"></div>
+          <div><label>Other Charge</label><input type="number" class="other" step="0.01" placeholder="0.00"></div>
+          <div style="grid-column: 1 / -1; text-align: right;">
+            <button type="button" class="remove-btn" onclick="removeItem(this)">❌ Remove Item</button>
+          </div>
+        </div>
+      </div>
+      <button type="button" onclick="addItem()">➕ Add Another Item</button>
+    </div>
+
+     <div class="form-section">
+        <h3>Discounts & Taxes</h3>
+        <div class="form-grid">
+            <div><label>Discount on Making (₹)</label><input type="number" id="makingDiscount" min="0" step="0.01" value="0"></div>
+            <div><label>Voucher Discount (₹)</label><input type="number" id="voucherDiscount" min="0" step="0.01" value="0"></div>
+            <div><label>Advance Amount (₹)</label><input type="number" id="advanceAmount" min="0" step="0.01" value="0"></div>
+            <div><label>CGST Rate (%)</label><input type="number" id="cgstRate" min="0" step="0.01" value=""></div>
+            <div><label>SGST Rate (%)</label><input type="number" id="sgstRate" min="0" step="0.01" value=""></div>
+        </div>
+    </div>
+
+    <button type="submit" style="width: 100%; margin-top: 15px; padding: 15px;">Generate Invoice</button>
+  </form>
+
+  <div id="invoicePreview">
+    <div class="invoice-header">
+      <h2 style="font-size: 1.2rem;">SATTAM JEWELLERY HOUSE <br>সত্তম জুয়েলারি হাউস</h2>
+      <p>ক্যানিং পুরাতন বাজার, দঃ ২৪ পরগণা, পিন: ৭৪৩৩২৯</p>
+      <p>Ph: 7908841974, 9732723757</p>
+      <h3 style="border: 2px solid #000; margin: 10px auto; padding: 5px; max-width: 200px; color: #000;">INVOICE</h3>
+      <p>GSTIN: N/A</p>
+    </div>
+
+    <div class="customer-details-grid">
+        <div><strong>Name:</strong> <span id="dispCustomerName"></span></div>
+        <div><strong>Memo No.:</strong> <span id="dispMemoNo"></span></div>
+        <div><strong>Address:</strong> <span id="dispCustomerAddress"></span></div>
+        <div><strong>Date:</strong> <span id="dispInvoiceDate"></span></div>
+        <div><strong>Ph. No.:</strong> <span id="dispCustomerPhone"></span></div>
+        <div><strong>Place of Delivery:</strong> <span id="dispPlaceOfDelivery"></span></div>
+    </div>
+
+    <table class="invoice-items-table">
+        <thead>
+            <tr>
+                <th>Sl. No.</th>
+                <th>Description</th>
+                <th>HSN</th>
+                <th>Purity</th>
+                <th>Pcs</th>
+                <th>Gross Wt</th>
+                <th>Net Wt</th>
+                <th>Rate</th>
+                <th>Metal Amount</th>
+                <th>Making</th>
+                <th>Others</th>
+                <th>GRAND AMOUNT</th>
+            </tr>
+        </thead>
+        <tbody id="invoiceItemsBody"></tbody>
+    </table>
+
+    <div class="invoice-footer">
+        <div class="footer-left">
+            <div><strong>Sales Person:</strong> <span id="dispSalesPerson"></span></div>
+            <br>
+            <div><strong>In Words:</strong> <span id="amountInWords"></span></div>
+           
+        </div>
+        <div class="footer-right">
+            <table>
+                <tbody>
+                    <tr id="rowVoucherDiscount"><td>LESS: Voucher Discount</td><td style="text-align:right;"><span id="dispVoucherDiscount"></span></td></tr>
+                    <tr id="rowTaxableAmount"><td>Taxable Amount</td><td style="text-align:right;"><span id="dispTaxableAmount"></span></td></tr>
+                    <tr id="rowCgst"><td>CGST @<span id="dispCgstRate"></span>%</td><td style="text-align:right;"><span id="dispCgstAmount"></span></td></tr>
+                    <tr id="rowSgst"><td>SGST @<span id="dispSgstRate"></span>%</td><td style="text-align:right;"><span id="dispSgstAmount"></span></td></tr>
+                    
+                    <tr><td>Gross Total</td><td style="text-align:right;"><span id="dispGrossTotal"></span></td></tr>
+                    <tr id="rowAdvanceAmount"><td>LESS: Advance Amount</td><td style="text-align:right;"><span id="dispAdvanceAmount"></span></td></tr>
+                    <tr><td>Round Off</td><td style="text-align:right;"><span id="dispRoundOff"></span></td></tr>
+                    <tr class="net-amount"><td>Net Amount</td><td style="text-align:right;">₹ <span id="dispNetAmount"></span></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+     <div class="signatures">
+        <div>__________________<br>Customer's Signature</div>
+        <div>__________________<br>Authorised Signatory</div>
+    </div>
+  </div>
+
+  <div class="download-buttons" id="downloadButtons">
+    <button onclick="window.print()">🖨 Print Invoice</button>
+    <button onclick="savePDF()">💾 Save as PDF</button>
+  </div>
+</div>
+
+<script>
+  // Set default date
+  document.getElementById('invoiceDate').valueAsDate = new Date();
+
+  function addItem() {
+    const container = document.getElementById('itemsContainer');
+    const newItemEntry = container.firstElementChild.cloneNode(true);
+    newItemEntry.querySelectorAll('input').forEach(input => input.value = '');
+    // Reset specific default values
+    newItemEntry.querySelector('.pcs').value = '1';
+    container.appendChild(newItemEntry);
+  }
+
+  function removeItem(btn) {
+    const itemEntry = btn.closest('.item-entry');
+    if (document.querySelectorAll('.item-entry').length > 1) {
+      itemEntry.remove();
+    } else {
+      alert("You cannot remove the only item.");
+    }
+  }
+  
+  // Number to Words Converter (Indian Rupees)
+  function numberToWords(num) {
+    const a = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+    const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+    const s = ['', 'Thousand', 'Lakh', 'Crore'];
+
+    const inWords = (n) => {
+        let str = '';
+        if (n > 19) {
+            str += b[Math.floor(n / 10)] + ' ' + a[n % 10];
+        } else {
+            str += a[n];
+        }
+        return str.trim();
+    };
+
+    if (num === 0) return 'Zero';
+    
+    num = Math.floor(num);
+    let crore = Math.floor(num/10000000);
+    num %= 10000000;
+    let lakh = Math.floor(num/100000);
+    num %= 100000;
+    let thousand = Math.floor(num/1000);
+    num %= 1000;
+    let hundred = Math.floor(num/100);
+    num %= 100;
+    
+    let result = "";
+    if(crore > 0) result += inWords(crore) + " Crore ";
+    if(lakh > 0) result += inWords(lakh) + " Lakh ";
+    if(thousand > 0) result += inWords(thousand) + " Thousand ";
+    if(hundred > 0) result += inWords(hundred) + " Hundred ";
+    if(num > 0) result += inWords(num);
+    
+    return result.trim() + " Only";
+}
+
+  document.getElementById('invoiceForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    // 1. GATHER DATA
+    const customerName = document.getElementById('customerName').value;
+    const customerAddress = document.getElementById('customerAddress').value;
+    const customerPhone = document.getElementById('customerPhone').value;
+    const memoNo = document.getElementById('memoNo').value;
+    const invoiceDate = new Date(document.getElementById('invoiceDate').value).toLocaleDateString('en-GB'); // DD/MM/YYYY
+    const placeOfDelivery = document.getElementById('placeOfDelivery').value;
+    const salesPerson = document.getElementById('salesPerson').value;
+
+    const makingDiscount = parseFloat(document.getElementById('makingDiscount').value) || 0;
+    const voucherDiscount = parseFloat(document.getElementById('voucherDiscount').value) || 0;
+    // ## Value Gathered Here ##
+    const advanceAmount = parseFloat(document.getElementById('advanceAmount').value) || 0;
+    const cgstRate = parseFloat(document.getElementById('cgstRate').value) || 0;
+    const sgstRate = parseFloat(document.getElementById('sgstRate').value) || 0;
+
+    const invoiceItemsBody = document.getElementById('invoiceItemsBody');
+    invoiceItemsBody.innerHTML = "";
+    
+    // 2. PROCESS ITEMS AND CALCULATE TOTALS
+    const itemEntries = document.querySelectorAll('.item-entry');
+    let subtotal = 0;
+
+    itemEntries.forEach((item, index) => {
+      const itemName = item.querySelector('.itemName').value;
+      const hsn = item.querySelector('.hsn').value;
+      const purity = item.querySelector('.purity').value;
+      const pcs = item.querySelector('.pcs').value;
+      const grossWeight = parseFloat(item.querySelector('.grossWeight').value) || 0;
+      const netWeight = parseFloat(item.querySelector('.netWeight').value) || 0;
+      const rate = parseFloat(item.querySelector('.rate').value) || 0;
+      const making = parseFloat(item.querySelector('.making').value) || 0;
+      const other = parseFloat(item.querySelector('.other').value) || 0;
+
+      const metalAmount = netWeight * rate;
+      const grandAmount = metalAmount + making + other;
+      subtotal += grandAmount;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${index + 1}</td>
+        <td>${itemName}</td>
+        <td>${hsn}</td>
+        <td>${purity}</td>
+        <td>${pcs}</td>
+        <td>${grossWeight.toFixed(3)}</td>
+        <td>${netWeight.toFixed(3)}</td>
+        <td>${rate.toFixed(2)}</td>
+        <td>${metalAmount.toFixed(2)}</td>
+        <td>${making.toFixed(2)}</td>
+        <td>${other.toFixed(2)}</td>
+        <td>${grandAmount.toFixed(2)}</td>
+      `;
+      invoiceItemsBody.appendChild(tr);
+    });
+
+    // 3. FINAL CALCULATIONS
+    // ## Calculation Logic Updated ##
+    const subtotalAfterMakingDiscount = subtotal - makingDiscount; // Not explicitly shown, but used in logic
+    const taxableAmount = subtotalAfterMakingDiscount - voucherDiscount;
+    const cgstAmount = taxableAmount * (cgstRate / 100);
+    const sgstAmount = taxableAmount * (sgstRate / 100);
+    const grossTotal = taxableAmount + cgstAmount + sgstAmount;
+    const totalAfterAdvance = grossTotal - advanceAmount; // New intermediate total
+    const netAmount = Math.round(totalAfterAdvance);
+    const roundOff = netAmount - totalAfterAdvance;
+
+    // 4. POPULATE INVOICE PREVIEW
+    document.getElementById('dispCustomerName').innerText = customerName;
+    document.getElementById('dispCustomerAddress').innerText = customerAddress;
+    document.getElementById('dispCustomerPhone').innerText = customerPhone;
+    document.getElementById('dispMemoNo').innerText = memoNo;
+    document.getElementById('dispInvoiceDate').innerText = invoiceDate;
+    document.getElementById('dispPlaceOfDelivery').innerText = placeOfDelivery;
+    document.getElementById('dispSalesPerson').innerText = salesPerson;
+    
+    // Populate totals
+    document.getElementById('dispVoucherDiscount').innerText = voucherDiscount.toFixed(2);
+    document.getElementById('dispTaxableAmount').innerText = taxableAmount.toFixed(2);
+    document.getElementById('dispCgstRate').innerText = cgstRate.toFixed(2);
+    document.getElementById('dispCgstAmount').innerText = cgstAmount.toFixed(2);
+    document.getElementById('dispSgstRate').innerText = sgstRate.toFixed(2);
+    document.getElementById('dispSgstAmount').innerText = sgstAmount.toFixed(2);
+    document.getElementById('dispGrossTotal').innerText = grossTotal.toFixed(2);
+    // ## New Span Populated ##
+    document.getElementById('dispAdvanceAmount').innerText = advanceAmount.toFixed(2);
+    document.getElementById('dispRoundOff').innerText = roundOff.toFixed(2);
+    document.getElementById('dispNetAmount').innerText = netAmount.toFixed(2);
+    document.getElementById('amountInWords').innerText = numberToWords(netAmount);
+
+
+    // ## Conditional Display Logic Updated ##
+    // -----------------------------------------------------------------------
+    // Conditionally display discount, tax, and advance rows
+    const rowVoucher = document.getElementById('rowVoucherDiscount');
+    const rowTaxable = document.getElementById('rowTaxableAmount');
+    const rowCgst = document.getElementById('rowCgst');
+    const rowSgst = document.getElementById('rowSgst');
+    const rowAdvance = document.getElementById('rowAdvanceAmount');
+
+    // Hide all conditional rows by default
+    rowVoucher.style.display = 'none';
+    rowTaxable.style.display = 'none';
+    rowCgst.style.display = 'none';
+    rowSgst.style.display = 'none';
+    rowAdvance.style.display = 'none';
+    
+    let taxesOrDiscountApplied = false;
+
+    // Show rows only if their values are greater than 0
+    if (voucherDiscount > 0) {
+      rowVoucher.style.display = 'table-row';
+      taxesOrDiscountApplied = true;
+    }
+    if (cgstRate > 0) {
+      rowCgst.style.display = 'table-row';
+      taxesOrDiscountApplied = true;
+    }
+    if (sgstRate > 0) {
+      rowSgst.style.display = 'table-row';
+      taxesOrDiscountApplied = true;
+    }
+    if (advanceAmount > 0) {
+      rowAdvance.style.display = 'table-row';
+    }
+
+
+    // The 'Taxable Amount' row should appear if any discount or tax is applied
+    if (taxesOrDiscountApplied) {
+      rowTaxable.style.display = 'table-row';
+    }
+    // -----------------------------------------------------------------------
+
+
+    // 5. SHOW INVOICE
+    const invoicePreview = document.getElementById('invoicePreview');
+    invoicePreview.style.display = 'block';
+    invoicePreview.scrollIntoView({ behavior: "smooth" });
+  });
+
+  function savePDF() {
+    const invoice = document.getElementById('invoicePreview');
+    const memoNo = document.getElementById('memoNo').value.replace(/\//g, '-'); // Sanitize filename
+    const opt = {
+      margin:       0.5,
+      filename:     `Invoice_${memoNo}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2 },
+      jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
+    html2pdf().from(invoice).set(opt).save();
+  }
+</script>
+
+</body>
+</html>
